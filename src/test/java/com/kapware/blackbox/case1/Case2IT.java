@@ -23,8 +23,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 @Testcontainers
-class Case1IT {
-    private static Logger logger = LoggerFactory.getLogger(Case1IT.class);
+class Case2IT {
+    private static Logger logger = LoggerFactory.getLogger(Case2IT.class);
     Network network;
     GenericContainer appContainer;
     WireMockContainer meetupApiContainer;
