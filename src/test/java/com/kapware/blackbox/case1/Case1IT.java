@@ -1,5 +1,6 @@
 package com.kapware.blackbox.case1;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -36,28 +37,23 @@ class Case1IT {
         meetupApiContainer
                 .withNetwork(network)
                 .withNetworkAliases("meetup-api")
-                .withMappingFromJSON(
+                .start();
+        meetupApiContainer.followOutput(new Slf4jLogConsumer(logger).withPrefix("meetup-api"));
+        WireMock.configureFor(meetupApiContainer.getHost(), meetupApiContainer.getPort());
+        WireMock.stubFor(
+                WireMock.get("/events?only=id,name,time&status=upcoming,past&key=boguskey&group_urlname=agroup")
+                        .willReturn(WireMock.okJson(
 // language=json
 """
 {
-  "request": {
-    "method": "GET",
-    "url": "/events?only=id,name,time&status=upcoming,past&key=boguskey&group_urlname=agroup"
-  },
-
-  "response": {
-    "status": 200,
-    "body": "{\\"results\\":[{\\"id\\":123,\\"name\\":\\"abc\\"}]}",
-    "headers": {
-        "Content-Type": "application/json"
-    }
-  }
+    "results": [
+        {
+            "id":123,
+            "name": "abc"
+        }
+    ]
 }
-"""
-                )
-                .start();
-
-        meetupApiContainer.followOutput(new Slf4jLogConsumer(logger).withPrefix("meetup-api"));
+""")));
 
         var testedImage = System.getenv("TESTED_IMAGE");
         appContainer = new GenericContainer(testedImage);
