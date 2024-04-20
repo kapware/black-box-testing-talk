@@ -1,4 +1,4 @@
-package com.kapware.blackbox.case1;
+package com.kapware.blackbox.xenia;
 
 import com.github.tomakehurst.wiremock.client.WireMock;
 import org.junit.jupiter.api.BeforeEach;
