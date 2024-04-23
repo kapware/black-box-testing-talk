@@ -22,7 +22,6 @@ import static com.jayway.jsonpath.matchers.JsonPathMatchers.hasJsonPath;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
-@Testcontainers
 class Case2IT {
     private static Logger logger = LoggerFactory.getLogger(Case2IT.class);
     Network network;
@@ -33,15 +32,21 @@ class Case2IT {
     @BeforeEach
     void setup() {
         network = Network.newNetwork();
-        meetupApiContainer = new WireMockContainer("wiremock/wiremock:2.35.0");
+        meetupApiContainer = new WireMockContainer(
+                "wiremock/wiremock:2.35.0");
         meetupApiContainer
                 .withNetwork(network)
                 .withNetworkAliases("meetup-api")
                 .start();
-        meetupApiContainer.followOutput(new Slf4jLogConsumer(logger).withPrefix("meetup-api"));
-        WireMock.configureFor(meetupApiContainer.getHost(), meetupApiContainer.getPort());
+        meetupApiContainer.followOutput(new Slf4jLogConsumer(logger)
+                .withPrefix("meetup-api"));
+        WireMock.configureFor(meetupApiContainer.getHost(),
+                meetupApiContainer.getPort());
         WireMock.stubFor(
-                WireMock.get("/events?only=id,name,time&status=upcoming,past&key=boguskey&group_urlname=agroup")
+                WireMock.get("/events?only=id,name,time" +
+                                "&status=upcoming,past" +
+                                "&key=boguskey" +
+                                "&group_urlname=agroup")
                         .willReturn(WireMock.okJson(
 // language=json
 """
@@ -57,11 +62,11 @@ class Case2IT {
 
         var testedImage = System.getenv("TESTED_IMAGE");
         appContainer = new GenericContainer(testedImage);
-        appContainer
+        appContainer.waitingFor(Wait.forHttp("/events/")
+                        .forPort(8080))
+                .withExposedPorts(8080)
                 .dependsOn(meetupApiContainer)
                 .withNetwork(network)
-                .waitingFor(Wait.forHttp("/events/").forPort(8080))
-                .withExposedPorts(8080)
                 .withEnv("meetup.key", "boguskey")
                 .withEnv("meetup.groupUrlName", "agroup")
                 .withEnv("meetup.url", "http://meetup-api:8080/")
@@ -72,30 +77,30 @@ class Case2IT {
     }
 
     @Test
-    void refreshesEventsFromMeetup() throws IOException, InterruptedException {
-        // given:
-        // when: sending refresh request
-        httpClient.send(
-                HttpRequest.newBuilder(
-                                URI.create("http://" + appContainer.getHost() + ":"
-                                        + appContainer.getMappedPort(8080)
-                                        + "/events/refresh"))
-                        .POST(HttpRequest.BodyPublishers.noBody())
-                        .build(),
-                HttpResponse.BodyHandlers.ofString()
-        );
+    void refreshesEventsFromMeetup() throws IOException,
+            InterruptedException {
+    // when: sending refresh request
+    httpClient.send(
+        HttpRequest.newBuilder(URI.create(
+                        "http://" + appContainer.getHost() + ":"
+                                + appContainer.getMappedPort(8080)
+                                + "/events/refresh"))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build(),
+        HttpResponse.BodyHandlers.ofString()
+    );
 
-        // then:
-        var eventsResponse = httpClient.send(
-                HttpRequest.newBuilder(
-                                URI.create("http://" + appContainer.getHost() + ":"
-                                        + appContainer.getMappedPort(8080)
-                                        + "/events/"))
-                        .GET()
-                        .build(),
-                HttpResponse.BodyHandlers.ofString()
-        );
-        assertThat(eventsResponse.body(), hasJsonPath("$[0].id", equalTo(123)));
-        assertThat(eventsResponse.body(), hasJsonPath("$[0].name", equalTo("abc")));
+    // then: returns refreshed events
+    var eventsResponse = httpClient.send(
+        HttpRequest.newBuilder(URI.create(
+                        "http://" + appContainer.getHost() + ":"
+                                + appContainer.getMappedPort(8080)
+                                + "/events/"))
+                .GET()
+                .build(),
+        HttpResponse.BodyHandlers.ofString()
+    );
+    assertThat(eventsResponse.body(), hasJsonPath("$[0].id", equalTo(123)));
+    assertThat(eventsResponse.body(), hasJsonPath("$[0].name", equalTo("abc")));
     }
 }
