@@ -100,7 +100,9 @@ class Case2IT {
                 .build(),
         HttpResponse.BodyHandlers.ofString()
     );
-    assertThat(eventsResponse.body(), hasJsonPath("$[0].id", equalTo(123)));
-    assertThat(eventsResponse.body(), hasJsonPath("$[0].name", equalTo("abc")));
+    assertThat(eventsResponse.body(),
+        hasJsonPath("$[0].id", equalTo(123)));
+    assertThat(eventsResponse.body(),
+        hasJsonPath("$[0].name", equalTo("abc")));
     }
 }
